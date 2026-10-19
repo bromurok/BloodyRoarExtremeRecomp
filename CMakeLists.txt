@@ -42,3 +42,7 @@ endif()
 
 # target name = GAME_EXE in build.bat, xbe = GAME_XBE
 add_xbe_image(BloodyRoarExtreme default.xbe game.toml ${GAME_PARTITIONS} game)
+
+if(MINGW OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC))
+    target_link_options(BloodyRoarExtreme PRIVATE -static -static-libgcc)
+endif()
