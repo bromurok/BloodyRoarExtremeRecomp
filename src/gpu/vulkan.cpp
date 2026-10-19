@@ -2301,13 +2301,14 @@ bool VulkanBackend::CreateDrawDescriptorLayout() {
         return false;
     }
 
+    // Descriptor pool size balanced for integrated and dedicated GPUs (8192 sets)
     VkDescriptorPoolSize pool_sizes[] = {
-        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 4096 * 2},
-        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4096 * 4},
-        {VK_DESCRIPTOR_TYPE_SAMPLER, 4096 * 4}
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 8192 * 2},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 8192 * 4},
+        {VK_DESCRIPTOR_TYPE_SAMPLER, 8192 * 4}
     };
     VkDescriptorPoolCreateInfo dpci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    dpci.maxSets = 4096;
+    dpci.maxSets = 8192;
     dpci.poolSizeCount = static_cast<uint32_t>(std::size(pool_sizes));
     dpci.pPoolSizes = pool_sizes;
     if (vkCreateDescriptorPool(device_, &dpci, nullptr, &draw_desc_pool_) != VK_SUCCESS) {
@@ -2346,8 +2347,20 @@ VkDescriptorSet VulkanBackend::GetOrCreateDescriptorSet(const VkImageView views[
 
     VkDescriptorSet ds = VK_NULL_HANDLE;
     if (vkAllocateDescriptorSets(device_, &ai, &ds) != VK_SUCCESS) {
-        LOGR("vulkan: vkAllocateDescriptorSets failed");
-        return VK_NULL_HANDLE;
+        // Pool exhausted: wait for in-flight GPU work, flush cache, and reset pool to recover gracefully on any hardware
+        if (device_ && draw_desc_pool_ && vkResetDescriptorPool) {
+            vkDeviceWaitIdle(device_);
+            ds_cache_.clear();
+            std::memset(ds_last_views_, 0, sizeof(ds_last_views_));
+            std::memset(ds_last_samplers_, 0, sizeof(ds_last_samplers_));
+            ds_last_ds_ = VK_NULL_HANDLE;
+            vkResetDescriptorPool(device_, draw_desc_pool_, 0);
+            vkAllocateDescriptorSets(device_, &ai, &ds);
+        }
+        if (ds == VK_NULL_HANDLE) {
+            LOGR("vulkan: vkAllocateDescriptorSets failed");
+            return VK_NULL_HANDLE;
+        }
     }
 
     VkDescriptorBufferInfo b0_info{};

@@ -7,7 +7,11 @@ del /q "%GAME_EXE%.zip" 2>nul
 rem an empty assets folder beside the exe, where the game (files or .iso) goes
 rd /s /q "%OUT%\release" 2>nul
 mkdir "%OUT%\release\assets"
-7z a "%GAME_EXE%.zip" ".\%OUT%\%GAME_EXE%.exe" ".\%OUT%\release\assets" .\README.md .\LICENSE .\THIRD_PARTY.txt
+rem bundle required LLVM/Clang runtime libraries if present
+set "DLL_BUNDLE="
+if exist "libc++.dll" set DLL_BUNDLE=%DLL_BUNDLE% .\libc++.dll
+if exist "libunwind.dll" set DLL_BUNDLE=%DLL_BUNDLE% .\libunwind.dll
+7z a "%GAME_EXE%.zip" ".\%OUT%\%GAME_EXE%.exe" ".\%OUT%\release\assets" .\README.md .\LICENSE .\THIRD_PARTY.txt %DLL_BUNDLE%
 echo.
 echo   Release zip created: %GAME_EXE%.zip
 echo.
