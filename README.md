@@ -1,5 +1,9 @@
 # Bloody Roar Extreme - XBE Recomp
 
+[![AI Assisted](https://img.shields.io/badge/Assisted_by-Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
+[![Platform](https://img.shields.io/badge/Platform-Windows_x64-0078D6?style=for-the-badge&logo=windows)](https://github.com/bromurok/BloodyRoarExtremeRecomp)
+[![Backend](https://img.shields.io/badge/Backend-Vulkan-red?style=for-the-badge&logo=vulkan)](https://www.vulkan.org/)
+
 An unofficial native PC port of the original Xbox version of **Bloody Roar Extreme** (*Bloody Roar: Primal Fury*), with enhanced graphics options, Vulkan backend, high-resolution rendering, and controller support.
 
 This port was created using the [Xbox XBE Recomp](https://github.com/TGP482/XboxXBE-Recomp) toolchain.
@@ -117,6 +121,7 @@ The compiled executable will be placed in `out\build\release\BloodyRoarExtreme.e
 
 ## Credits & Third Party
 - [Xbox XBE Recomp](https://github.com/TGP482/XboxXBE-Recomp) by TGP482 (MIT License).
+- **AI Pairing & Optimization**: Google DeepMind Gemini / Antigravity (audio DSP pipeline, stutter elimination, AGC limiter, Vulkan pacing & build automation).
 - [Dear ImGui](https://github.com/ocornut/imgui) by Omar Cornut (MIT License).
 - [SDL](https://github.com/libsdl-org/SDL) by Sam Lantinga (zlib License).
 - [toml++](https://github.com/marzer/tomlplusplus) by Mark Gillard (MIT License).
