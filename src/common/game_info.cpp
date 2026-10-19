@@ -57,8 +57,9 @@ void OnPad(int port, input::Pad& pad) {
         return;
     }
 
+    // Event-driven keyboard polling: avoids dozens of synchronous GetAsyncKeyState kernel calls per frame
     auto is_down = [](int vk) -> bool {
-        return (GetAsyncKeyState(vk) & 0x8000) != 0 || (vk >= 0 && vk < 256 && s_keys[vk].load(std::memory_order_relaxed));
+        return vk >= 0 && vk < 256 && s_keys[vk].load(std::memory_order_relaxed);
     };
 
     // Control durante los primeros 12 segundos (FMV / Logo):
