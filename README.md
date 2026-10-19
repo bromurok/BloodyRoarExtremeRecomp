@@ -51,7 +51,8 @@ To install or compile this port, you must provide your own copy from a legally o
 - **Hermite Cubic Resampling**: 4-point 3rd-order Hermite interpolation for clear high-frequency audio.
 - **Dynamic AGC Peak Limiter**: Smooth transparent peak limiter preventing distortion and audio saturation during intense special moves and Beast Drives.
 
-### Input & Controls
+### Input & Multiplayer
+- **2-Player Local Versus Mode**: Full support for 2 simultaneous players. Play head-to-head in local Versus mode (Player 1 on Keyboard or Controller 1, and Player 2 on a connected Controller).
 - **Native Controller Support**: Full plug-and-play support for Xbox, DualShock/DualSense (PlayStation), and Nintendo Switch controllers via SDL3 with vibration / rumble support.
 - **Keyboard Controls**: Fully playable on keyboard with two built-in layouts (Arcade/WASD style and Classic/Arrow style):
 
