@@ -121,7 +121,6 @@ The compiled executable will be placed in `out\build\release\BloodyRoarExtreme.e
 
 ## Credits & Third Party
 - [Xbox XBE Recomp](https://github.com/TGP482/XboxXBE-Recomp) by TGP482 (MIT License).
-- **AI Pairing & Optimization**: Google DeepMind Gemini / Antigravity (audio DSP pipeline, stutter elimination, AGC limiter, Vulkan pacing & build automation).
 - [Dear ImGui](https://github.com/ocornut/imgui) by Omar Cornut (MIT License).
 - [SDL](https://github.com/libsdl-org/SDL) by Sam Lantinga (zlib License).
 - [toml++](https://github.com/marzer/tomlplusplus) by Mark Gillard (MIT License).
