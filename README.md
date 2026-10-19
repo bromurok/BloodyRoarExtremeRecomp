@@ -8,6 +8,10 @@ An unofficial native PC port of the original Xbox version of **Bloody Roar Extre
 
 This port was created using the [Xbox XBE Recomp](https://github.com/TGP482/XboxXBE-Recomp) toolchain.
 
+> [!TIP]
+> **Why Native PC Recompilation?**
+> Currently, this native port is one of the **only ways to play *Bloody Roar Extreme* with complete stability and peak performance on modern PCs**. Traditional emulation suffers from notoriously poor performance, heavy stuttering, and frame drops due to original game engine quirks. By recompiling the game natively for Windows x64 with Vulkan, it completely bypasses emulation overhead—delivering a rock-solid 60 FPS, ultra-low input latency, and pristine high-resolution rendering.
+
 > [!NOTE]
 > This project does not contain any copyrighted game assets or proprietary code. You must provide the files or disc image from your own legally acquired copy of the game to install or build.
 
@@ -120,6 +124,7 @@ The compiled executable will be placed in `out\build\release\BloodyRoarExtreme.e
 ---
 
 ## Credits & Third Party
+- [@rasoky2](https://github.com/rasoky2) for Intel compatibility, Vulkan stability improvements, and static linking.
 - [Xbox XBE Recomp](https://github.com/TGP482/XboxXBE-Recomp) by TGP482 (MIT License).
 - [Dear ImGui](https://github.com/ocornut/imgui) by Omar Cornut (MIT License).
 - [SDL](https://github.com/libsdl-org/SDL) by Sam Lantinga (zlib License).
