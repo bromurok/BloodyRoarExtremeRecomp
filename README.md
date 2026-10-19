@@ -35,9 +35,28 @@ This port was created using the [Xbox XBE Recomp](https://github.com/TGP482/Xbox
 - **Hermite Cubic Resampling**: 4-point 3rd-order Hermite interpolation for clear high-frequency audio.
 - **Dynamic AGC Peak Limiter**: Smooth transparent peak limiter preventing distortion and audio saturation during intense special moves and Beast Drives.
 
-### Input
-- **Native Controller Support**: Full support for Xbox, DualShock/DualSense (PlayStation), and Switch controllers via SDL3 with vibration / rumble support.
-- **Keyboard Support**: Configurable keyboard controls.
+### Input & Controls
+- **Native Controller Support**: Full plug-and-play support for Xbox, DualShock/DualSense (PlayStation), and Nintendo Switch controllers via SDL3 with vibration / rumble support.
+- **Keyboard Controls**: Fully playable on keyboard with two built-in layouts (Arcade/WASD style and Classic/Arrow style):
+
+| Xbox Button | In-Game Action | Layout 1 (Arcade) | Layout 2 (Classic) |
+| :--- | :--- | :--- | :--- |
+| **D-Pad / Stick** | Movement | `W` / `A` / `S` / `D` | `Arrow Keys` (Up/Down/Left/Right) |
+| **A** | Punch / Confirm | `J` | `Z` |
+| **B** | Kick / Cancel | `K` | `X` |
+| **X** | Beast Transform | `U` | `C` |
+| **Y** | Special Attack | `I` | `V` |
+| **Start** | Start / Pause | `Enter` | `Spacebar` |
+| **Back** | Back | `Escape` | `Backspace` |
+| **Black (RB)** | Guard / Side step | `E` | `2` |
+| **White (LB)** | Action | `Q` | `1` |
+| **LT** | Action | `Left Shift` | `Left Shift` |
+| **RT** | Action | `Ctrl` | `Right Shift` |
+
+> [!TIP]
+> **Customizing Controls:**
+> - **In-game button actions** (Punch, Kick, Beast, Guard, etc.) can be reassigned natively inside the game's menu under **Options → Controller**.
+> - **Physical keyboard keys** can be modified directly in the source code inside [`src/common/game_info.cpp`](src/common/game_info.cpp#L111-L134).
 
 ---
 
