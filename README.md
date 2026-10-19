@@ -9,11 +9,27 @@ This port was created using the [Xbox XBE Recomp](https://github.com/TGP482/Xbox
 
 ---
 
+## Game & ISO Requirements
+
+To install or compile this port, you must provide your own copy from a legally owned Xbox disc:
+
+- **Game**: *Bloody Roar Extreme* (*Bloody Roar: Primal Fury*)
+- **Region**: **USA (NTSC-U)**
+- **Title ID**: `48550001`
+- **Serial**: `HU-001`
+- **Supported Formats**: 1:1 Redump disc image (`.iso`), trimmed (`.xiso`), or extracted game directory.
+- **`default.xbe` SHA-1**: `e58541178170e32ba71babce2c9ccf905bdb4db4`
+
+> [!IMPORTANT]
+> This port was created specifically from the **USA (NTSC-U)** release. Other regions (PAL / NTSC-J) have different code layouts and will not boot. Verify that your executable's SHA-1 matches `e58541178170e32ba71babce2c9ccf905bdb4db4`.
+
+---
+
 ## Installation
 
 1. Download the latest release from the [Releases](https://github.com/bromurok/BloodyRoarExtremeRecomp/releases) page.
 2. Extract the archive into a folder of your choice.
-3. Place your game files in the `assets` folder. You can use:
+3. Place your USA game files in the `assets` folder. You can use:
    - The game's disc image (`.iso`, supporting both XISO and 1:1 Redump disc images).
    - Or the extracted game files containing `default.xbe`.
 4. Run `BloodyRoarExtreme.exe`.
@@ -81,7 +97,7 @@ cd BloodyRoarExtremeRecomp
 ```
 
 ### 2. Add Required Game Files
-Place your legal `default.xbe` inside the `assets/` folder.
+Place your legal USA release `default.xbe` (SHA-1: `e58541178170e32ba71babce2c9ccf905bdb4db4`) inside the `assets/` folder.
 
 ### 3. Install Dependencies
 Install [Visual Studio Community 2022](https://visualstudio.microsoft.com/downloads/) with:
