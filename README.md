@@ -15,6 +15,10 @@ This port was created using the [Xbox XBE Recomp](https://github.com/TGP482/Xbox
 > [!NOTE]
 > This project does not contain any copyrighted game assets or proprietary code. You must provide the files or disc image from your own legally acquired copy of the game to install or build.
 
+> [!IMPORTANT]
+> **In-Game Configuration Menu (F1):**  
+> Press **F1** at any time during gameplay to open the in-game Configuration Menu to adjust your Display Mode (Fullscreen / Borderless / Windowed), Resolution, and Render Scale multiplier.
+
 ---
 
 ## Game & ISO Requirements
@@ -41,7 +45,6 @@ To install or compile this port, you must provide your own copy from a legally o
    - The game's disc image (`.iso`, supporting both XISO and 1:1 Redump disc images).
    - Or the extracted game files containing `default.xbe`.
 4. Run `BloodyRoarExtreme.exe`.
-5. Press **F1** during gameplay to open the in-game Configuration Menu (Display mode, Resolution, Render Scale).
 
 ---
 
