@@ -21,19 +21,22 @@ This port was created using the [Xbox XBE Recomp](https://github.com/TGP482/Xbox
 
 ---
 
-## Game & ISO Requirements
+## Supported Game Regions & ISO Requirements
 
-To install or compile this port, you must provide your own copy from a legally owned Xbox disc:
+To install or compile this port, you must provide your own copy from a legally owned Xbox disc. All three regional releases are fully supported:
 
-- **Game**: *Bloody Roar Extreme* (*Bloody Roar: Primal Fury*)
-- **Region**: **USA (NTSC-U)**
-- **Title ID**: `48550001`
-- **Serial**: `HU-001`
-- **Supported Formats**: 1:1 Redump disc image (`.iso`), trimmed (`.xiso`), or extracted game directory.
-- **`default.xbe` SHA-1**: `e58541178170e32ba71babce2c9ccf905bdb4db4`
+| Region | Executable | Supported Formats | `default.xbe` SHA-1 | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| **USA (NTSC-U)** | `BloodyRoarExtreme.exe` | `.iso`, `.xiso`, or extracted folder | `e58541178170e32ba71babce2c9ccf905bdb4db4` | English |
+| **Europe (PAL)** | `BloodyRoarExtreme_EUR.exe` | `.iso`, `.xiso`, or extracted folder | `60380ebc7bc976aefd7e75d72609a02fae74a507` | Multi-5 languages (English, Spanish, French, German, Italian) |
+| **Japan (NTSC-J)** | `BloodyRoarExtreme_JPN.exe` | `.iso`, `.xiso`, or extracted folder | `85d897dc5ae88f8914eda42d31be81b6386045fa` | Japanese |
 
-> [!IMPORTANT]
-> This port was created specifically from the **USA (NTSC-U)** release. Other regions (PAL / NTSC-J) have different code layouts and will not boot. Verify that your executable's SHA-1 matches `e58541178170e32ba71babce2c9ccf905bdb4db4`.
+> [!TIP]
+> **Language Selection (European version):**  
+> In `settings.toml` (located next to the executable), you can set your preferred language:
+> ```toml
+> language = "spanish"  # Options: "spanish", "english", "french", "german", "italian" (or numbers 1 to 6)
+> ```
 
 ---
 
@@ -41,10 +44,10 @@ To install or compile this port, you must provide your own copy from a legally o
 
 1. Download the latest release from the [Releases](https://github.com/bromurok/BloodyRoarExtremeRecomp/releases) page.
 2. Extract the archive into a folder of your choice.
-3. Place your USA game files in the `assets` folder. You can use:
+3. Place your game files in the `assets` folder. You can use:
    - The game's disc image (`.iso`, supporting both XISO and 1:1 Redump disc images).
    - Or the extracted game files containing `default.xbe`.
-4. Run `BloodyRoarExtreme.exe`.
+4. Run the executable corresponding to your game region (`BloodyRoarExtreme.exe`, `BloodyRoarExtreme_EUR.exe`, or `BloodyRoarExtreme_JPN.exe`).
 
 ---
 

@@ -54,6 +54,18 @@ void Load() {
     s.aniso = 0;
     s.renderer = t["renderer"].value_or(s.renderer);
     s.join_ip = t["join_ip"].value_or(s.join_ip);
+    if (auto lang_str = t["language"].value<std::string>()) {
+        std::string l = *lang_str;
+        std::transform(l.begin(), l.end(), l.begin(), [](unsigned char c) { return std::tolower(c); });
+        if (l == "spanish" || l == "es" || l == "spa" || l == "espanol") s.language = 5;
+        else if (l == "french" || l == "fr" || l == "fre") s.language = 4;
+        else if (l == "german" || l == "de" || l == "ger") s.language = 3;
+        else if (l == "italian" || l == "it" || l == "ita") s.language = 6;
+        else if (l == "japanese" || l == "ja" || l == "jpn") s.language = 2;
+        else s.language = 1;
+    } else if (auto lang_num = t["language"].value<int64_t>()) {
+        s.language = uint32_t(*lang_num);
+    }
     for (const Option& o : kGame.options) {
         if (o.flag) *o.flag = t[o.key].value_or(*o.flag);
         else *o.value = t[o.key].value_or(*o.value);
@@ -70,7 +82,8 @@ toml::table Table() {
                   {"height", int64_t(s.height)},
                   {"render_scale", int64_t(s.render_scale)},
                   {"renderer", s.renderer},
-                  {"join_ip", s.join_ip}};
+                  {"join_ip", s.join_ip},
+                  {"language", int64_t(s.language)}};
     for (const Option& o : kGame.options) {
         if (o.flag) t.insert(o.key, *o.flag);
         else t.insert(o.key, int64_t(*o.value));
@@ -128,6 +141,10 @@ bool Widescreen() {
 float RenderScale(uint32_t) {
     // multiplicador de resolucion interna estilo emulador: x1 nativa, x2, x4...
     return float(Get().render_scale);
+}
+
+uint32_t Language() {
+    return Get().language;
 }
 
 }  // namespace app
