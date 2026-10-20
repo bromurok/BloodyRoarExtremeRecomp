@@ -66,6 +66,7 @@ void Load() {
     } else if (auto lang_num = t["language"].value<int64_t>()) {
         s.language = uint32_t(*lang_num);
     }
+    s.menu_language = t["menu_language"].value_or(s.language == 5 ? "es" : "en");
     for (const Option& o : kGame.options) {
         if (o.flag) *o.flag = t[o.key].value_or(*o.flag);
         else *o.value = t[o.key].value_or(*o.value);
@@ -83,7 +84,8 @@ toml::table Table() {
                   {"render_scale", int64_t(s.render_scale)},
                   {"renderer", s.renderer},
                   {"join_ip", s.join_ip},
-                  {"language", int64_t(s.language)}};
+                  {"language", int64_t(s.language)},
+                  {"menu_language", s.menu_language}};
     for (const Option& o : kGame.options) {
         if (o.flag) t.insert(o.key, *o.flag);
         else t.insert(o.key, int64_t(*o.value));
