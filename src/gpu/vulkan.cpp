@@ -2763,6 +2763,10 @@ void VulkanBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t
         vs_key = Hash(&fk, sizeof(fk), vs_key);
     }
 
+    if (app::Widescreen() && !a.pretransformed) {
+        vs_key ^= 0x574944455343524Eull;
+    }
+
     PixelKey pk = MakePixelKey(s, stages);
     constexpr uint64_t kPixelKeySalt = 0x55AA55AA00000000ull;
     uint64_t ps_key = Hash(&pk, sizeof(pk)) ^ kPixelKeySalt;
@@ -2774,6 +2778,12 @@ void VulkanBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t
     } else {
         std::string vs_hlsl = sh_prog ? VertexProgramHlsl(s.vs->program, a.regs, a.decode)
                                       : FixedVertexHlsl(a.regs, a.pretransformed, a.decode, fk);
+        if (app::Widescreen() && !a.pretransformed) {
+            size_t ret_pos = vs_hlsl.rfind("return o;");
+            if (ret_pos != std::string::npos) {
+                vs_hlsl.insert(ret_pos, "    if (abs(o.pos.w - 1.0f) > 0.005f) { o.pos.x *= 0.75f; }\n");
+            }
+        }
         vs_mod = GetOrCreateShader(vs_hlsl, L"main", L"vs_6_0", vs_key);
     }
 
