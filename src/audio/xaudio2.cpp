@@ -53,12 +53,12 @@ void StartOutput(std::function<void(float*, uint32_t)> render) {
             return;
         }
         voice->Start();
-        constexpr uint32_t kFrames = (kRate * 20) / 1000, kSlots = 6;
+        constexpr uint32_t kFrames = (kRate * 20) / 1000, kSlots = 12;
         std::vector<float> bufs(kSlots * kFrames * 2);
         for (uint32_t n = 0;;) {
             XAUDIO2_VOICE_STATE st;
             voice->GetState(&st, XAUDIO2_VOICE_NOSAMPLESPLAYED);
-            if (st.BuffersQueued >= 3) {
+            if (st.BuffersQueued >= 6) {
                 WaitForSingleObject(callback.buffer_event, 25);
                 continue;
             }

@@ -164,6 +164,7 @@ VK_DEVICE_FUNCTION(vkCmdBindDescriptorSets)
 VK_DEVICE_FUNCTION(vkCmdDraw)
 VK_DEVICE_FUNCTION(vkCmdDrawIndexed)
 VK_DEVICE_FUNCTION(vkCmdCopyBufferToImage)
+VK_DEVICE_FUNCTION(vkCmdCopyImage)
 VK_DEVICE_FUNCTION(vkCmdPipelineBarrier)
 VK_DEVICE_FUNCTION(vkCmdBlitImage)
 VK_DEVICE_FUNCTION(vkCmdClearColorImage)
@@ -281,6 +282,7 @@ void LoadVulkanDevice(VkDevice device) {
     LOAD_DEV(vkCmdDraw);
     LOAD_DEV(vkCmdDrawIndexed);
     LOAD_DEV(vkCmdCopyBufferToImage);
+    LOAD_DEV(vkCmdCopyImage);
     LOAD_DEV(vkCmdPipelineBarrier);
     LOAD_DEV(vkCmdBlitImage);
     LOAD_DEV(vkCmdClearColorImage);
@@ -420,6 +422,10 @@ struct VulkanTarget {
     bool drawn = false;
     VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
     uint64_t epoch = 0;
+    VkImage fb_image = VK_NULL_HANDLE;
+    VkDeviceMemory fb_memory = VK_NULL_HANDLE;
+    VkImageView fb_view = VK_NULL_HANDLE;
+    VkImageLayout fb_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 };
 
 inline float Bits(uint32_t v) {
@@ -836,6 +842,7 @@ private:
     DxcCompiler dxc_;
     std::unordered_map<uint64_t, VulkanTarget> targets_;
     VulkanTarget* EnsureTarget(const Surface& s, bool depth);
+    VkImageView GetFeedbackView(VkCommandBuffer cb, VulkanTarget& t);
     VulkanTarget* bound_rt_ = nullptr;
     VulkanTarget* bound_ds_ = nullptr;
     std::unordered_map<uint64_t, VkShaderModule> shader_cache_;
@@ -1123,6 +1130,75 @@ void VulkanBackend::TransitionImageLayout(VkCommandBuffer cb, VkImage image,
     }
 
     vkCmdPipelineBarrier(cb, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+}
+
+
+VkImageView VulkanBackend::GetFeedbackView(VkCommandBuffer cb, VulkanTarget& t) {
+    if (t.fb_image == VK_NULL_HANDLE) {
+        VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
+        ici.imageType = VK_IMAGE_TYPE_2D;
+        ici.format = t.format;
+        ici.extent = {t.w, t.h, 1};
+        ici.mipLevels = 1;
+        ici.arrayLayers = 1;
+        ici.samples = VK_SAMPLE_COUNT_1_BIT;
+        ici.tiling = VK_IMAGE_TILING_OPTIMAL;
+        ici.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        if (vkCreateImage(device_, &ici, nullptr, &t.fb_image) != VK_SUCCESS) return t.view;
+
+        VkMemoryRequirements req{};
+        vkGetImageMemoryRequirements(device_, t.fb_image, &req);
+        VkMemoryAllocateInfo mai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
+        mai.allocationSize = req.size;
+        mai.memoryTypeIndex = FindMemoryType(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        if (vkAllocateMemory(device_, &mai, nullptr, &t.fb_memory) != VK_SUCCESS) {
+            vkDestroyImage(device_, t.fb_image, nullptr);
+            t.fb_image = VK_NULL_HANDLE;
+            return t.view;
+        }
+        vkBindImageMemory(device_, t.fb_image, t.fb_memory, 0);
+
+        VkImageViewCreateInfo ivci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+        ivci.image = t.fb_image;
+        ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        ivci.format = t.format;
+        ivci.subresourceRange.aspectMask = t.depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+        ivci.subresourceRange.baseMipLevel = 0;
+        ivci.subresourceRange.levelCount = 1;
+        ivci.subresourceRange.baseArrayLayer = 0;
+        ivci.subresourceRange.layerCount = 1;
+        if (vkCreateImageView(device_, &ivci, nullptr, &t.fb_view) != VK_SUCCESS) {
+            vkFreeMemory(device_, t.fb_memory, nullptr);
+            vkDestroyImage(device_, t.fb_image, nullptr);
+            t.fb_image = VK_NULL_HANDLE;
+            t.fb_memory = VK_NULL_HANDLE;
+            return t.view;
+        }
+        t.fb_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+
+    if (active_rp_ != VK_NULL_HANDLE) {
+        vkCmdEndRenderPass(cb);
+        active_rp_ = VK_NULL_HANDLE;
+        active_fb_ = VK_NULL_HANDLE;
+    }
+
+    TransitionImageLayout(cb, t.image, t.layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    t.layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    TransitionImageLayout(cb, t.fb_image, t.fb_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    VkImageCopy region{};
+    region.srcSubresource = {t.depth ? (VkImageAspectFlags)VK_IMAGE_ASPECT_DEPTH_BIT : (VkImageAspectFlags)VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    region.dstSubresource = region.srcSubresource;
+    region.extent = {t.w, t.h, 1};
+    vkCmdCopyImage(cb, t.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, t.fb_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    TransitionImageLayout(cb, t.fb_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    t.fb_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    return t.fb_view;
 }
 
 VulkanTarget* VulkanBackend::EnsureTarget(const Surface& s, bool depth) {
@@ -1469,15 +1545,17 @@ bool VulkanBackend::CreateSwapchain() {
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device_, surface_, &caps);
 
     swapchain_extent_ = caps.currentExtent;
-    if (swapchain_extent_.width == UINT32_MAX || swapchain_extent_.width == 0) {
+    if (swapchain_extent_.width == UINT32_MAX || swapchain_extent_.width < 64) {
         swapchain_extent_.width = guest_w_ ? guest_w_ : 1280;
     }
-    if (swapchain_extent_.height == UINT32_MAX || swapchain_extent_.height == 0) {
+    if (swapchain_extent_.height == UINT32_MAX || swapchain_extent_.height < 64) {
         swapchain_extent_.height = guest_h_ ? guest_h_ : 720;
     }
     if (caps.minImageExtent.width > 0 && caps.maxImageExtent.width > 0) {
-        swapchain_extent_.width = std::clamp(swapchain_extent_.width, caps.minImageExtent.width, caps.maxImageExtent.width);
-        swapchain_extent_.height = std::clamp(swapchain_extent_.height, caps.minImageExtent.height, caps.maxImageExtent.height);
+        uint32_t min_w = std::max(64u, caps.minImageExtent.width);
+        uint32_t min_h = std::max(64u, caps.minImageExtent.height);
+        swapchain_extent_.width = std::clamp(swapchain_extent_.width, min_w, caps.maxImageExtent.width);
+        swapchain_extent_.height = std::clamp(swapchain_extent_.height, min_h, caps.maxImageExtent.height);
     }
 
     uint32_t fmt_count = 0;
@@ -2642,16 +2720,20 @@ void VulkanBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t
                 uint64_t rt_key = uint64_t(d.data);
                 auto tit = targets_.find(rt_key);
                 if (tit != targets_.end() && tit->second.image != VK_NULL_HANDLE && !d.cube && d.depth == 1 && !Format(d.format).compressed) {
-                    if (tit->second.layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-                        if (active_rp_ != VK_NULL_HANDLE) {
-                            vkCmdEndRenderPass(cb);
-                            active_rp_ = VK_NULL_HANDLE;
-                            active_fb_ = VK_NULL_HANDLE;
+                    if (&tit->second == rt) {
+                        stage_views[i] = GetFeedbackView(cb, tit->second);
+                    } else {
+                        if (tit->second.layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+                            if (active_rp_ != VK_NULL_HANDLE) {
+                                vkCmdEndRenderPass(cb);
+                                active_rp_ = VK_NULL_HANDLE;
+                                active_fb_ = VK_NULL_HANDLE;
+                            }
+                            TransitionImageLayout(cb, tit->second.image, tit->second.layout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                            tit->second.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                         }
-                        TransitionImageLayout(cb, tit->second.image, tit->second.layout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                        tit->second.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                        stage_views[i] = tit->second.view;
                     }
-                    stage_views[i] = tit->second.view;
                 } else {
                     VulkanTexture* vt = GetOrCreateTexture(s, i, d);
                     if (vt) {
@@ -3149,6 +3231,9 @@ void VulkanBackend::ApplySettings() {
     }
     target_fb_cache_.clear();
     for (auto& [k, t] : targets_) {
+        if (t.fb_view) vkDestroyImageView(device_, t.fb_view, nullptr);
+        if (t.fb_image) vkDestroyImage(device_, t.fb_image, nullptr);
+        if (t.fb_memory) vkFreeMemory(device_, t.fb_memory, nullptr);
         if (t.view) vkDestroyImageView(device_, t.view, nullptr);
         if (t.image) vkDestroyImage(device_, t.image, nullptr);
         if (t.memory) vkFreeMemory(device_, t.memory, nullptr);
@@ -3219,6 +3304,15 @@ void VulkanBackend::Cleanup() {
             if (fb) vkDestroyFramebuffer(device_, fb, nullptr);
         }
         target_fb_cache_.clear();
+        for (auto& [k, t] : targets_) {
+            if (t.fb_view) vkDestroyImageView(device_, t.fb_view, nullptr);
+            if (t.fb_image) vkDestroyImage(device_, t.fb_image, nullptr);
+            if (t.fb_memory) vkFreeMemory(device_, t.fb_memory, nullptr);
+            if (t.view) vkDestroyImageView(device_, t.view, nullptr);
+            if (t.image) vkDestroyImage(device_, t.image, nullptr);
+            if (t.memory) vkFreeMemory(device_, t.memory, nullptr);
+        }
+        targets_.clear();
         if (target_rp_depth_) {
             vkDestroyRenderPass(device_, target_rp_depth_, nullptr);
             target_rp_depth_ = VK_NULL_HANDLE;
