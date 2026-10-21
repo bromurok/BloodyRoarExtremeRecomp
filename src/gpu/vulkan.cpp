@@ -33,6 +33,7 @@
 #include "app/app.h"
 #include "core/log.h"
 #include "gpu/backend.h"
+#include "gpu/enhancements.h"
 #include "gpu/vulkan.h"
 #include "gpu/shaders.h"
 #include "gpu/texture.h"
@@ -460,8 +461,14 @@ inline VkBlendFactor VkBlend(uint32_t v, bool alpha) {
         case 9: return alpha ? VK_BLEND_FACTOR_DST_ALPHA : VK_BLEND_FACTOR_DST_COLOR;
         case 10: return alpha ? VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA : VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
         case 11: return alpha ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
-        case 14: return VK_BLEND_FACTOR_CONSTANT_COLOR;
-        case 15: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+        case 14:
+        case 0x8001:
+        case 0x8003:
+            return alpha ? VK_BLEND_FACTOR_CONSTANT_ALPHA : VK_BLEND_FACTOR_CONSTANT_COLOR;
+        case 15:
+        case 0x8002:
+        case 0x8004:
+            return alpha ? VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA : VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
         case 0x300: return alpha ? VK_BLEND_FACTOR_SRC_ALPHA : VK_BLEND_FACTOR_SRC_COLOR;
         case 0x301: return alpha ? VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA : VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
         case 0x302: return VK_BLEND_FACTOR_SRC_ALPHA;
@@ -2783,6 +2790,10 @@ void VulkanBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t
         ps_mod = ps_it->second;
     } else {
         std::string ps_hlsl = PixelHlsl(pk);
+        size_t ret_pos = ps_hlsl.rfind("return outc;");
+        if (ret_pos != std::string::npos) {
+            ps_hlsl.insert(ret_pos, "    if (outc.a <= 0.005f) discard;\n");
+        }
         ps_mod = GetOrCreateShader(ps_hlsl, L"main", L"ps_6_0", ps_key);
     }
 
@@ -3046,7 +3057,7 @@ void VulkanBackend::Present(const Surface& front) {
 
         vkCmdBlitImage(cb, t.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                        swapchain_images_[image_index_], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                       1, &blit, VK_FILTER_LINEAR);
+                       1, &blit, enhancements::Get().anti_aliasing ? VK_FILTER_LINEAR : VK_FILTER_NEAREST);
 
         TransitionImageLayout(cb, swapchain_images_[image_index_], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         has_image = true;
@@ -3134,7 +3145,7 @@ void VulkanBackend::Present(const Surface& front) {
 
                 vkCmdBlitImage(cb, front_image_, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                swapchain_images_[image_index_], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                               1, &blit, VK_FILTER_LINEAR);
+                               1, &blit, enhancements::Get().anti_aliasing ? VK_FILTER_LINEAR : VK_FILTER_NEAREST);
 
                 TransitionImageLayout(cb, swapchain_images_[image_index_], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
                 has_image = true;

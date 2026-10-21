@@ -1,3 +1,4 @@
+#include "gpu/enhancements.h"
 #include "config_menu.h"
 #include "app/app.h"
 #include <imgui.h>
@@ -244,6 +245,14 @@ void Draw(double fps) {
                     s_dirty = true;
                 }
             ImGui::EndCombo();
+        }
+
+        Section(is_es ? "MEJORAS GRAFICAS" : "GRAPHICS ENHANCEMENTS");
+        {
+            auto& enh = enhancements::Get();
+            if (ImGui::Checkbox(is_es ? "Suavizado de bordes (Anti-Aliasing)" : "Edge smoothing (Anti-Aliasing)", &enh.anti_aliasing)) {
+                enhancements::Save();
+            }
         }
 
         Section(is_es ? "IDIOMA DEL JUEGO" : "GAME LANGUAGE");
