@@ -50,36 +50,26 @@
 #pragma clang diagnostic pop
 #endif
 
-#ifdef __MINGW32__
-template<> inline const GUID &__mingw_uuidof<IDxcUtils>() {
-    static const GUID id = { 0x4605c4cb, 0x2019, 0x492a, { 0xad, 0xa4, 0x65, 0xf2, 0x0b, 0xb7, 0xd6, 0x7f } };
-    return id;
+// Explicit GUID definitions for DXC to avoid MinGW/Clang/MSVC __uuidof conflicts
+static const IID kIID_IDxcUtils = { 0x4605c4cb, 0x2019, 0x492a, { 0xad, 0xa4, 0x65, 0xf2, 0x0b, 0xb7, 0xd6, 0x7f } };
+static const IID kIID_IDxcCompiler3 = { 0x228b4687, 0x5a6a, 0x4730, { 0x90, 0x0c, 0x97, 0x02, 0xb2, 0x20, 0x3f, 0x54 } };
+static const IID kIID_IDxcResult = { 0x58346cda, 0xdde7, 0x4497, { 0x94, 0x61, 0x6f, 0x87, 0xaf, 0x5e, 0x06, 0x59 } };
+static const IID kIID_IDxcBlob = { 0x8ba5fb08, 0x5195, 0x40e2, { 0xac, 0x58, 0x0d, 0x98, 0x9c, 0x3a, 0x01, 0x02 } };
+static const IID kIID_IDxcBlobUtf8 = { 0x3da636c9, 0xba71, 0x4024, { 0xa3, 0x01, 0x30, 0xcb, 0xf1, 0x25, 0x30, 0x5b } };
+
+static inline void SimpleState(VkPipelineColorBlendAttachmentState& s,
+                               VkBlendFactor src, VkBlendFactor dst,
+                               VkBlendOp op, bool enable) {
+    s.blendEnable = enable ? VK_TRUE : VK_FALSE;
+    s.srcColorBlendFactor = src;
+    s.dstColorBlendFactor = dst;
+    s.colorBlendOp = op;
+    s.srcAlphaBlendFactor = src;
+    s.dstAlphaBlendFactor = dst;
+    s.alphaBlendOp = op;
+    s.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 }
-template<> inline const GUID &__mingw_uuidof<IDxcCompiler3>() {
-    static const GUID id = { 0x228b4687, 0x5a6a, 0x4730, { 0x90, 0x0c, 0x97, 0x02, 0xb2, 0x20, 0x3f, 0x54 } };
-    return id;
-}
-template<> inline const GUID &__mingw_uuidof<IDxcResult>() {
-    static const GUID id = { 0x58346cda, 0xdde7, 0x4497, { 0x94, 0x61, 0x6f, 0x87, 0xaf, 0x5e, 0x06, 0x59 } };
-    return id;
-}
-template<> inline const GUID &__mingw_uuidof<IDxcBlob>() {
-    static const GUID id = { 0x8ba5fb08, 0x5195, 0x40e2, { 0xac, 0x58, 0x0d, 0x98, 0x9c, 0x3a, 0x01, 0x02 } };
-    return id;
-}
-template<> inline const GUID &__mingw_uuidof<IDxcBlobUtf8>() {
-    static const GUID id = { 0x3da636c9, 0xba71, 0x4024, { 0xa3, 0x01, 0x30, 0xcb, 0xf1, 0x25, 0x30, 0x5b } };
-    return id;
-}
-template<> inline const GUID &__mingw_uuidof<IDxcBlobWide>() {
-    static const GUID id = { 0xa3f84eab, 0x0faa, 0x497e, { 0xa3, 0x9c, 0xee, 0x6e, 0xd6, 0x0b, 0x2d, 0x84 } };
-    return id;
-}
-template<> inline const GUID &__mingw_uuidof<IDxcOperationResult>() {
-    static const GUID id = { 0xcedb484a, 0xd4e9, 0x445a, { 0xb9, 0x91, 0xca, 0x21, 0xca, 0x57, 0x3d, 0x52 } };
-    return id;
-}
-#endif
 
 namespace gpu {
 
@@ -322,7 +312,7 @@ public:
     bool Init() {
         dxc_mod_ = LoadLibraryA("dxcompiler.dll");
         if (!dxc_mod_) {
-            dxc_mod_ = LoadLibraryA("C:\\Users\\pres\\Documents\\DescompBloodyVulkan\\BloodyRoar-Recomp\\out\\build\\release\\dxcompiler.dll");
+            dxc_mod_ = LoadLibraryW((app::ExeDir() / L"dxcompiler.dll").c_str());
         }
         if (!dxc_mod_) {
             LOGR("vulkan: failed to load dxcompiler.dll");
@@ -335,12 +325,12 @@ public:
             return false;
         }
 
-        if (FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils_)))) {
+        if (FAILED(DxcCreateInstance(CLSID_DxcUtils, kIID_IDxcUtils, (void**)&utils_))) {
             LOGR("vulkan: DxcCreateInstance CLSID_DxcUtils failed");
             return false;
         }
 
-        if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler_)))) {
+        if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, kIID_IDxcCompiler3, (void**)&compiler_))) {
             LOGR("vulkan: DxcCreateInstance CLSID_DxcCompiler failed");
             return false;
         }
@@ -372,7 +362,7 @@ public:
         };
 
         IDxcResult* result = nullptr;
-        HRESULT hr = compiler_->Compile(&source_buffer, args.data(), (uint32_t)args.size(), nullptr, IID_PPV_ARGS(&result));
+        HRESULT hr = compiler_->Compile(&source_buffer, args.data(), (uint32_t)args.size(), nullptr, kIID_IDxcResult, (void**)&result);
         if (FAILED(hr) || !result) {
             LOGR("vulkan: DXC Compile failed hr=0x%08X", (uint32_t)hr);
             return {};
@@ -382,7 +372,7 @@ public:
         result->GetStatus(&status);
         if (FAILED(status)) {
             IDxcBlobUtf8* errors = nullptr;
-            result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
+            result->GetOutput(DXC_OUT_ERRORS, kIID_IDxcBlobUtf8, (void**)&errors, nullptr);
             if (errors && errors->GetStringLength() > 0) {
                 LOGR("vulkan: shader compilation error: %s", errors->GetStringPointer());
             }
@@ -392,7 +382,7 @@ public:
         }
 
         IDxcBlob* shader_blob = nullptr;
-        result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shader_blob), nullptr);
+        result->GetOutput(DXC_OUT_OBJECT, kIID_IDxcBlob, (void**)&shader_blob, nullptr);
         result->Release();
 
         if (!shader_blob) return {};
