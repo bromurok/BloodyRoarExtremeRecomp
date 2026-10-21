@@ -130,7 +130,6 @@ The compiled executable will be placed in `out\build\release\BloodyRoarExtreme.e
 ---
 
 ## Credits & Third Party
-- [@rasoky2](https://github.com/rasoky2) for Intel compatibility, Vulkan stability improvements, and static linking.
 - [Xbox XBE Recomp](https://github.com/TGP482/XboxXBE-Recomp) by TGP482 (MIT License).
 - [Dear ImGui](https://github.com/ocornut/imgui) by Omar Cornut (MIT License).
 - [SDL](https://github.com/libsdl-org/SDL) by Sam Lantinga (zlib License).
