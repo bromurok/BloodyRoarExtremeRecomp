@@ -2790,10 +2790,6 @@ void VulkanBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t
         ps_mod = ps_it->second;
     } else {
         std::string ps_hlsl = PixelHlsl(pk);
-        size_t ret_pos = ps_hlsl.rfind("return outc;");
-        if (ret_pos != std::string::npos) {
-            ps_hlsl.insert(ret_pos, "    if (outc.a <= 0.005f) discard;\n");
-        }
         ps_mod = GetOrCreateShader(ps_hlsl, L"main", L"ps_6_0", ps_key);
     }
 
