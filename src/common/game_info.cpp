@@ -5,6 +5,10 @@
 
 #include <atomic>
 #include <chrono>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <toml++/toml.hpp>
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -13,6 +17,137 @@
 #endif
 
 namespace {
+
+struct KeyBindings {
+    std::vector<int> up = {VK_UP, 'W'};
+    std::vector<int> down = {VK_DOWN, 'S'};
+    std::vector<int> left = {VK_LEFT, 'A'};
+    std::vector<int> right = {VK_RIGHT, 'D'};
+    std::vector<int> start = {VK_RETURN, VK_SPACE};
+    std::vector<int> back = {VK_ESCAPE, VK_BACK};
+    std::vector<int> punch = {'J', 'Z'};        // A
+    std::vector<int> kick = {'K', 'X'};         // B
+    std::vector<int> beast = {'U', 'C'};        // X
+    std::vector<int> y_button = {'I', 'V'};     // Y
+    std::vector<int> black_rb = {'E', '2'};     // Black / RB
+    std::vector<int> white_lb = {'Q', '1'};     // White / LB
+    std::vector<int> lt_trigger = {VK_SHIFT, VK_LSHIFT}; // LT (Sidestep in)
+    std::vector<int> rt_trigger = {VK_RSHIFT, VK_CONTROL}; // RT (Sidestep away)
+} s_keys_config;
+
+int ParseKeyName(std::string name) {
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return std::toupper(c); });
+    if (name.empty()) return 0;
+    if (name.size() == 1) {
+        char c = name[0];
+        if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) return c;
+    }
+    if (name == "UP") return VK_UP;
+    if (name == "DOWN") return VK_DOWN;
+    if (name == "LEFT") return VK_LEFT;
+    if (name == "RIGHT") return VK_RIGHT;
+    if (name == "ENTER" || name == "RETURN") return VK_RETURN;
+    if (name == "SPACE") return VK_SPACE;
+    if (name == "ESC" || name == "ESCAPE") return VK_ESCAPE;
+    if (name == "BACKSPACE" || name == "BACK") return VK_BACK;
+    if (name == "TAB") return VK_TAB;
+    if (name == "SHIFT") return VK_SHIFT;
+    if (name == "LSHIFT") return VK_LSHIFT;
+    if (name == "RSHIFT") return VK_RSHIFT;
+    if (name == "CTRL" || name == "CONTROL") return VK_CONTROL;
+    if (name == "LCTRL") return VK_LCONTROL;
+    if (name == "RCTRL") return VK_RCONTROL;
+    if (name == "ALT") return VK_MENU;
+    return 0;
+}
+
+std::string KeyToString(int vk) {
+    if ((vk >= 'A' && vk <= 'Z') || (vk >= '0' && vk <= '9')) return std::string(1, char(std::tolower(vk)));
+    switch (vk) {
+        case VK_UP: return "up";
+        case VK_DOWN: return "down";
+        case VK_LEFT: return "left";
+        case VK_RIGHT: return "right";
+        case VK_RETURN: return "enter";
+        case VK_SPACE: return "space";
+        case VK_ESCAPE: return "esc";
+        case VK_BACK: return "backspace";
+        case VK_TAB: return "tab";
+        case VK_SHIFT: return "shift";
+        case VK_LSHIFT: return "lshift";
+        case VK_RSHIFT: return "rshift";
+        case VK_CONTROL: return "ctrl";
+        default: return "";
+    }
+}
+
+void LoadKeyList(const toml::node_view<const toml::node>& node, std::vector<int>& dest) {
+    if (const auto* arr = node.as_array()) {
+        std::vector<int> parsed;
+        for (const auto& elem : *arr) {
+            if (auto s = elem.value<std::string>()) {
+                int k = ParseKeyName(*s);
+                if (k > 0) parsed.push_back(k);
+            }
+        }
+        if (!parsed.empty()) dest = std::move(parsed);
+    } else if (auto s = node.value<std::string>()) {
+        int k = ParseKeyName(*s);
+        if (k > 0) dest = {k};
+    }
+}
+
+void OnLoadSettings(const void* table_ptr) {
+    if (!table_ptr) return;
+    const auto& t = *static_cast<const toml::table*>(table_ptr);
+    const auto* kb = t.get_as<toml::table>("keyboard");
+    if (!kb) return;
+
+    LoadKeyList((*kb)["up"], s_keys_config.up);
+    LoadKeyList((*kb)["down"], s_keys_config.down);
+    LoadKeyList((*kb)["left"], s_keys_config.left);
+    LoadKeyList((*kb)["right"], s_keys_config.right);
+    LoadKeyList((*kb)["start"], s_keys_config.start);
+    LoadKeyList((*kb)["back"], s_keys_config.back);
+    LoadKeyList((*kb)["punch"], s_keys_config.punch);
+    LoadKeyList((*kb)["kick"], s_keys_config.kick);
+    LoadKeyList((*kb)["beast"], s_keys_config.beast);
+    LoadKeyList((*kb)["y"], s_keys_config.y_button);
+    LoadKeyList((*kb)["black_rb"], s_keys_config.black_rb);
+    LoadKeyList((*kb)["white_lb"], s_keys_config.white_lb);
+    LoadKeyList((*kb)["lt_trigger"], s_keys_config.lt_trigger);
+    LoadKeyList((*kb)["rt_trigger"], s_keys_config.rt_trigger);
+}
+
+void AppendArray(toml::table& tbl, const char* key, const std::vector<int>& vks) {
+    toml::array arr;
+    for (int vk : vks) {
+        std::string s = KeyToString(vk);
+        if (!s.empty()) arr.push_back(s);
+    }
+    tbl.insert(key, arr);
+}
+
+void OnSaveSettings(void* table_ptr) {
+    if (!table_ptr) return;
+    auto& t = *static_cast<toml::table*>(table_ptr);
+    toml::table kb;
+    AppendArray(kb, "up", s_keys_config.up);
+    AppendArray(kb, "down", s_keys_config.down);
+    AppendArray(kb, "left", s_keys_config.left);
+    AppendArray(kb, "right", s_keys_config.right);
+    AppendArray(kb, "start", s_keys_config.start);
+    AppendArray(kb, "back", s_keys_config.back);
+    AppendArray(kb, "punch", s_keys_config.punch);
+    AppendArray(kb, "kick", s_keys_config.kick);
+    AppendArray(kb, "beast", s_keys_config.beast);
+    AppendArray(kb, "y", s_keys_config.y_button);
+    AppendArray(kb, "black_rb", s_keys_config.black_rb);
+    AppendArray(kb, "white_lb", s_keys_config.white_lb);
+    AppendArray(kb, "lt_trigger", s_keys_config.lt_trigger);
+    AppendArray(kb, "rt_trigger", s_keys_config.rt_trigger);
+    t.insert_or_assign("keyboard", kb);
+}
 
 std::atomic<bool> s_keys[256] = {};
 std::atomic<bool> s_active = false;
@@ -96,8 +231,15 @@ void OnPad(int port, input::Pad& pad) {
     // Siempre activo para evitar que el juego bloquee sin haber pulsado tecla
     s_active.store(true, std::memory_order_relaxed);
 
+    auto any_down = [&](const std::vector<int>& vks) -> bool {
+        for (int vk : vks) {
+            if (is_down(vk)) return true;
+        }
+        return false;
+    };
+
     if (booting) {
-        bool start = is_down(VK_RETURN) || is_down(VK_SPACE);
+        bool start = any_down(s_keys_config.start);
         pad.buttons = start ? 0x0010 : 0x0000;
         std::memset(pad.analog, 0, sizeof(pad.analog));
         pad.lx = pad.ly = pad.rx = pad.ry = 0;
@@ -105,33 +247,33 @@ void OnPad(int port, input::Pad& pad) {
         return;
     }
 
-    if (!s_active.load(std::memory_order_relaxed) && !is_down(VK_RETURN) && !is_down(VK_SPACE)) {
+    if (!s_active.load(std::memory_order_relaxed) && !any_down(s_keys_config.start)) {
         return;
     }
 
-    // D-Pad / Movement (Arrows and WASD)
-    if (is_down(VK_UP) || is_down('W')) { pad.buttons |= 0x0001; pad.ly = 32767; }
-    if (is_down(VK_DOWN) || is_down('S')) { pad.buttons |= 0x0002; pad.ly = -32767; }
-    if (is_down(VK_LEFT) || is_down('A')) { pad.buttons |= 0x0004; pad.lx = -32767; }
-    if (is_down(VK_RIGHT) || is_down('D')) { pad.buttons |= 0x0008; pad.lx = 32767; }
+    // D-Pad / Movement
+    if (any_down(s_keys_config.up)) { pad.buttons |= 0x0001; pad.ly = 32767; }
+    if (any_down(s_keys_config.down)) { pad.buttons |= 0x0002; pad.ly = -32767; }
+    if (any_down(s_keys_config.left)) { pad.buttons |= 0x0004; pad.lx = -32767; }
+    if (any_down(s_keys_config.right)) { pad.buttons |= 0x0008; pad.lx = 32767; }
 
-    // Start (Enter, Space) & Back (Escape, Backspace)
-    if (is_down(VK_RETURN) || is_down(VK_SPACE)) pad.buttons |= 0x0010;
-    if (is_down(VK_ESCAPE) || is_down(VK_BACK)) pad.buttons |= 0x0020;
+    // Start & Back
+    if (any_down(s_keys_config.start)) pad.buttons |= 0x0010;
+    if (any_down(s_keys_config.back)) pad.buttons |= 0x0020;
 
     // Face Buttons: A, B, X, Y
-    if (is_down('J') || is_down('Z')) pad.analog[0] = 0xFF; // A (Punch / Select)
-    if (is_down('K') || is_down('X')) pad.analog[1] = 0xFF; // B (Kick / Cancel)
-    if (is_down('U') || is_down('C')) pad.analog[2] = 0xFF; // X (Beast)
-    if (is_down('I') || is_down('V')) pad.analog[3] = 0xFF; // Y
+    if (any_down(s_keys_config.punch)) pad.analog[0] = 0xFF;    // A (Punch / Select)
+    if (any_down(s_keys_config.kick)) pad.analog[1] = 0xFF;     // B (Kick / Cancel)
+    if (any_down(s_keys_config.beast)) pad.analog[2] = 0xFF;    // X (Beast)
+    if (any_down(s_keys_config.y_button)) pad.analog[3] = 0xFF; // Y
 
     // Shoulders: Black (RB) & White (LB)
-    if (is_down('E') || is_down('2')) pad.analog[4] = 0xFF; // Black / RB
-    if (is_down('Q') || is_down('1')) pad.analog[5] = 0xFF; // White / LB
+    if (any_down(s_keys_config.black_rb)) pad.analog[4] = 0xFF; // Black / RB
+    if (any_down(s_keys_config.white_lb)) pad.analog[5] = 0xFF; // White / LB
 
-    // Triggers: LT & RT
-    if (is_down(VK_SHIFT) || is_down(VK_LSHIFT)) pad.analog[6] = 0xFF; // LT
-    if (is_down(VK_RSHIFT) || is_down(VK_CONTROL)) pad.analog[7] = 0xFF; // RT
+    // Triggers: LT & RT (Sidestep)
+    if (any_down(s_keys_config.lt_trigger)) pad.analog[6] = 0xFF; // LT (Sidestep in)
+    if (any_down(s_keys_config.rt_trigger)) pad.analog[7] = 0xFF; // RT (Sidestep away)
 }
 
 // el mando fisico vive en el hueco 0 de SDL, pero el juego lo pide en el puerto 1.
@@ -170,8 +312,8 @@ const app::GameInfo app::kGame = {
     .missing = L"Put the game in the assets folder: its disc image (.iso), or default.xbe with its folders beside it.",
     .images = {{"default.xbe", "BloodyRoarExtreme"}}, // each recompiled xbe and its exe, for title launches
     .options = {},                        // game settings kept in the settings file
-    .load = nullptr,                      // reads more from the settings file's toml::table
-    .save = nullptr,                      // writes more into it
+    .load = OnLoadSettings,               // reads more from the settings file's toml::table
+    .save = OnSaveSettings,               // writes more into it
     .init = nullptr,                      // after the settings load, before the window and boot
     .loaded = nullptr,                    // image in memory, before its entry point runs
     .window = nullptr,                    // the game window is up
