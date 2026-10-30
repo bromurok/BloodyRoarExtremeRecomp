@@ -2426,6 +2426,13 @@ void D3D12Backend::SetViewportScissor(const State& s, uint32_t gw) {
 void D3D12Backend::SetBlendFactorStencilRef(const State& s) {
     float bf[4];
     Color(SimpleState(s, kMBlendColor), bf);
+    uint32_t sb = SimpleState(s, kMSrcBlend);
+    uint32_t db = SimpleState(s, kMDestBlend);
+    if (sb == 0x8003 || db == 0x8003 || sb == 0x8004 || db == 0x8004 ||
+        sb == 14 || db == 14 || sb == 0x8001 || db == 0x8001 ||
+        (bf[0] == 0.0f && bf[1] == 0.0f && bf[2] == 0.0f && bf[3] > 0.0f)) {
+        bf[0] = bf[1] = bf[2] = bf[3];
+    }
     cl_->OMSetBlendFactor(bf);
     cl_->OMSetStencilRef(SimpleState(s, kMStencilRef) & 0xFF);
 }

@@ -703,6 +703,14 @@ inline VkStencilOp VkStencilOperation(uint32_t op) {
         case 6: return VK_STENCIL_OP_INVERT;
         case 7: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
         case 8: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+        case 0: return VK_STENCIL_OP_ZERO;
+        case 0x1E00: return VK_STENCIL_OP_KEEP;
+        case 0x1E01: return VK_STENCIL_OP_REPLACE;
+        case 0x1E02: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+        case 0x1E03: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+        case 0x150A: return VK_STENCIL_OP_INVERT;
+        case 0x8507: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+        case 0x8508: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
         default: return VK_STENCIL_OP_KEEP;
     }
 }
@@ -798,6 +806,8 @@ private:
     bool pass_active_ = false;
     uint32_t image_index_ = 0;
     bool frame_begun_ = false;
+
+    bool depth_clamp_supported_ = false;
     VkFormat depth_format_ = VK_FORMAT_D32_SFLOAT_S8_UINT;
 
     double fps_ = 60.0;
@@ -1447,11 +1457,20 @@ bool VulkanBackend::CreateDevice() {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
 
+    VkPhysicalDeviceFeatures supported_features{};
+    vkGetPhysicalDeviceFeatures(physical_device_, &supported_features);
+    VkPhysicalDeviceFeatures dev_features{};
+    if (supported_features.depthClamp) {
+        dev_features.depthClamp = VK_TRUE;
+        depth_clamp_supported_ = true;
+    }
+
     VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
     dci.queueCreateInfoCount = 1;
     dci.pQueueCreateInfos = &qci;
     dci.enabledExtensionCount = static_cast<uint32_t>(std::size(dev_extensions));
     dci.ppEnabledExtensionNames = dev_extensions;
+    dci.pEnabledFeatures = &dev_features;
 
     VkResult res = vkCreateDevice(physical_device_, &dci, nullptr, &device_);
     if (res != VK_SUCCESS) {
@@ -2504,6 +2523,7 @@ VkPipeline VulkanBackend::GetOrCreatePipeline(const State& s, const Assembled& a
     vp.scissorCount = 1;
 
     VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+    rs.depthClampEnable = depth_clamp_supported_ ? VK_TRUE : VK_FALSE;
     rs.polygonMode = VK_POLYGON_MODE_FILL;
     rs.cullMode = cull_en ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
     rs.frontFace = cull_cw ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
@@ -2813,6 +2833,13 @@ void VulkanBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t
     // Dynamic blend color & stencil ref
     float blend_col[4];
     Color(SimpleState(s, kMBlendColor), blend_col);
+    uint32_t sb = SimpleState(s, kMSrcBlend);
+    uint32_t db = SimpleState(s, kMDestBlend);
+    if (sb == 0x8003 || db == 0x8003 || sb == 0x8004 || db == 0x8004 ||
+        sb == 14 || db == 14 || sb == 0x8001 || db == 0x8001 ||
+        (blend_col[0] == 0.0f && blend_col[1] == 0.0f && blend_col[2] == 0.0f && blend_col[3] > 0.0f)) {
+        blend_col[0] = blend_col[1] = blend_col[2] = blend_col[3];
+    }
     vkCmdSetBlendConstants(cb, blend_col);
     vkCmdSetStencilReference(cb, VK_STENCIL_FACE_FRONT_AND_BACK, SimpleState(s, kMStencilRef) & 0xFF);
 
